@@ -1,0 +1,33 @@
+services:
+  postgres_db:
+    image: postgres:latest
+    container_name: api_tasks_helper_db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    restart: unless-stopped
+  backend:
+    image: python:3.12.3
+    working_dir: /app
+    container_name: ${BACKEND_CONTAINER_NAME}
+    volumes:
+      - ./backend:/app
+      - ./backend/venv:/venv
+      - ./.env:/app/.env
+      - pip-cache:/root/.cache/pip
+    command: bash ./run.sh
+    ports:
+      - "8001:8000"  # Adjust ports as needed for your application
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  pip-cache:
