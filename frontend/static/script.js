@@ -352,6 +352,35 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Check token and model button click handler
+    const checkTokenModelBtn = document.getElementById('checkTokenModelBtn');
+    checkTokenModelBtn.addEventListener('click', async function() {
+        try {
+            showLoading(true);
+            // First get the current model
+            const modelResponse = await fetch('/api/model');
+            const modelResult = await modelResponse.json();
+
+            if (modelResult.status === 'success') {
+                // Then check the token health with the current model
+                const healthResponse = await fetch('/api/health');
+                const healthResult = await healthResponse.json();
+
+                if (healthResult.status === 'healthy') {
+                    showSuccess(`Token and model (${modelResult.model}) are both working properly!`);
+                } else {
+                    showError(`Token issue detected: ${healthResult.message}`);
+                }
+            } else {
+                showError('Could not retrieve current model information');
+            }
+        } catch (error) {
+            showError(`Error checking token and model: ${error.message}`);
+        } finally {
+            showLoading(false);
+        }
+    });
+
     // Initialize token status check
     checkTokenStatus();
 

@@ -35,24 +35,26 @@ client = OpenAI(
 
 @app.get("/api/health")
 async def api_health():
-    """Check if the OpenRouter API token is valid"""
+    """Check if the OpenRouter API token is valid with the current model"""
     try:
-        # Test the API with a simple request
+        # Test the API with a simple request using the current model
         response = client.chat.completions.create(
-            model="qwen/qwen3-coder:free",
+            model=current_model,  # Use the current model instead of hardcoded one
             messages=[{"role": "user", "content": "Hello, are you there?"}],
             max_tokens=5
         )
         return {
             "status": "healthy",
             "api_access": True,
-            "message": "OpenRouter API is accessible and token is valid"
+            "message": f"OpenRouter API is accessible and token is valid with model {current_model}",
+            "model": current_model
         }
     except Exception as e:
         return {
             "status": "unhealthy",
             "api_access": False,
-            "message": f"OpenRouter API error: {str(e)}"
+            "message": f"OpenRouter API error: {str(e)}",
+            "model": current_model
         }
 
 from fastapi import FastAPI, Query
