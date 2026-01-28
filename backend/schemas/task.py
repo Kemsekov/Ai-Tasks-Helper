@@ -39,6 +39,7 @@ class TaskResponse(TaskBase):
     subtasks: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+    ai_processed: bool
 
     class Config:
         from_attributes = True

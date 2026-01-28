@@ -3,10 +3,15 @@ from typing import Dict, Optional
 from openai import OpenAI
 from config import settings
 
+import os
+
 client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=settings.openrouter_token  # Get from https://openrouter.ai
 )
+
+# Get the model from environment variable, defaulting to qwen
+CURRENT_MODEL = os.getenv("DEFAULT_MODEL", "qwen/qwen3-coder:free")
 
 async def classify_task_with_ai(task_title: str, task_description: str) -> Optional[Dict]:
     """
@@ -14,16 +19,16 @@ async def classify_task_with_ai(task_title: str, task_description: str) -> Optio
     """
     prompt = f"""
     Analyze the following task and provide classification in YAML format:
-    
+
     Task Title: {task_title}
     Task Description: {task_description}
-    
+
     Please provide the following information in YAML format:
     - priority: High, Medium, or Low
     - category: Work, Personal, Learning, Health, or Other
     - estimated_time_minutes: Approximate time in minutes to complete the task
     - subtasks: A list of subtasks if applicable, otherwise null
-    
+
     Example format:
     ```yaml
     priority: High
@@ -33,62 +38,74 @@ async def classify_task_with_ai(task_title: str, task_description: str) -> Optio
       - Research requirements
       - Draft initial proposal
     ```
-    
+
     Only respond with the YAML content, nothing else.
     """
-    
+
     max_retries = 3
     for attempt in range(max_retries):
         try:
             response = client.chat.completions.create(
-                model="qwen/qwen3-coder:free",  # Free Qwen3 Coder model
+                model=CURRENT_MODEL,  # Use the current model
                 messages=[
                     {"role": "system", "content": "You are an expert task classifier. Respond only with valid YAML format as requested."},
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.3
             )
-            
+
             # Extract the response content
             content = response.choices[0].message.content.strip()
-            
+
             # Remove markdown code block markers if present
             if content.startswith("```yaml") and content.endswith("```"):
                 content = content[7:-3].strip()
             elif content.startswith("```") and content.endswith("```"):
                 content = content[3:-3].strip()
-            
+
             # Parse the YAML response
             parsed_response = yaml.safe_load(content)
-            
+
             # Validate the response structure
             if validate_classification(parsed_response):
                 return {
                     "priority": parsed_response["priority"],
                     "category": parsed_response["category"],
                     "estimated_time_minutes": parsed_response.get("estimated_time_minutes"),
-                    "subtasks": parsed_response.get("subtasks")
+                    "subtasks": parsed_response.get("subtasks"),
+                    "used_fallback": False
                 }
             else:
                 continue  # Retry if validation fails
-                
+
         except Exception as e:
-            print(f"Error in AI classification (attempt {attempt + 1}): {str(e)}")
-            if attempt == max_retries - 1:
+            error_msg = str(e)
+            print(f"Error in AI classification (attempt {attempt + 1}): {error_msg}")
+
+            # Check if it's an authentication error
+            if "401" in error_msg or "User not found" in error_msg or "Authentication" in error_msg:
+                print("Authentication error detected - returning default values immediately")
+                break  # Don't retry if it's an auth error
+            elif "429" in error_msg or "rate" in error_msg.lower():
+                print("Rate limit error detected - continuing to retry")
+                continue  # Continue retrying for rate limits
+            elif attempt == max_retries - 1:
                 # Return default values if all retries fail
+                print("All retries exhausted - returning default values")
                 return {
                     "priority": "Medium",
                     "category": "Other",
                     "estimated_time_minutes": 30,
                     "subtasks": None
                 }
-    
-    # If all attempts fail, return default values
+
+    # If all attempts fail or auth error occurs, return default values
     return {
         "priority": "Medium",
         "category": "Other",
         "estimated_time_minutes": 30,
-        "subtasks": None
+        "subtasks": None,
+        "used_fallback": True
     }
 
 def validate_classification(data: Dict) -> bool:

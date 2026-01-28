@@ -26,6 +26,19 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
+  frontend:
+    build: ./frontend
+    container_name: ai_task_helper_frontend
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./frontend:/app
+    depends_on:
+      - backend
+    environment:
+      - BACKEND_URL=http://backend:8000
+      - FLASK_ENV=development
+    restart: unless-stopped
 
 volumes:
   postgres_data:

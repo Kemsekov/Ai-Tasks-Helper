@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, Enum as SQLEnum
+from sqlalchemy import Column, Integer, String, Text, DateTime, Enum as SQLEnum, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 from enum import Enum

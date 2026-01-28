@@ -19,6 +19,7 @@ class Settings(BaseSettings):
 
     # AI settings
     openrouter_token: str
+    default_model: str = "qwen/qwen3-coder:free"
 
     @property
     def database_url(self):
