@@ -6,9 +6,9 @@ An intelligent task management system that uses AI to automatically analyze and 
 
 - Add tasks in natural language
 - AI-powered task classification (priority, category, estimated time)
-- Subtask generation
+- AI-generated subtasks for complex tasks
 - Real-time AI token and model management
-- Dynamic model switching (supports Qwen, Claude, OpenAI, and other models)
+- Dynamic model switching (supports Qwen, Claude, OpenAI, Google models, and other providers)
 - RESTful API for task management
 - User-specific task organization
 - PostgreSQL database storage
@@ -70,7 +70,7 @@ The application consists of three main services:
 ## API Endpoints
 
 ### Backend API (available at http://localhost:8001/api/v1/)
-- `POST /api/v1/tasks/` - Create a new task (requires provider_url, api_token, model_name query parameters, AI will classify it)
+- `POST /api/v1/tasks/` - Create a new task (requires provider_url, api_token, model_name query parameters, AI will classify it with priority, category, estimated time, and subtasks)
 - `GET /api/v1/tasks/{task_id}` - Get a specific task
 - `GET /api/v1/users/{user_id}/tasks` - Get all tasks for a user
 - `PUT /api/v1/tasks/{task_id}` - Update a task
@@ -94,9 +94,10 @@ The application consists of three main services:
 Access the user-friendly web interface at `http://localhost:5000` to:
 - View and manage tasks with a clean UI
 - Update your AI provider API token in real-time
-- Switch between different AI models (Qwen, Claude, GPT, GLM, etc.)
+- Switch between different AI models (Qwen, Claude, GPT, Gemini, etc.)
 - Validate provider credentials and model availability
 - Monitor token and model status
+- View AI-generated subtasks for complex tasks
 - Add, view, update, and delete tasks
 
 ## Usage
@@ -107,20 +108,21 @@ From the web interface, you can:
 1. Configure your AI provider settings (URL, token, model)
 2. Validate your configuration
 3. Add tasks in natural language
-4. View, update, and delete your tasks
+4. View AI-generated subtasks when applicable
+5. View, update, and delete your tasks
 
 Alternatively, you can interact with the API directly or use the interactive documentation at `http://localhost:8001/docs`.
 
 Example task creation:
 ```json
 {
-  "title": "Prepare presentation for team meeting",
-  "description": "Create slides covering quarterly results and upcoming initiatives",
+  "title": "Plan birthday party",
+  "description": "Organize a surprise birthday party including venue booking, catering, invitations, and entertainment",
   "user_id": "user123"
 }
 ```
 
-The AI will automatically classify the task with priority, category, estimated time, and potential subtasks.
+The AI will automatically classify the task with priority, category, estimated time, and generate subtasks if applicable.
 
 ## Supported AI Providers
 
@@ -129,7 +131,6 @@ The system supports multiple AI providers that are compatible with the OpenAI AP
 - OpenAI
 - Anthropic (via OpenRouter)
 - Google models (via OpenRouter)
-- Zhipu AI (via OpenRouter)
 - Any other OpenAI-compatible API provider
 
 ## Model Management
@@ -143,5 +144,10 @@ The system supports dynamic model switching without restarting services:
    - `qwen/qwen3-coder:free` (default)
    - `anthropic/claude-3-haiku:free`
    - `openai/gpt-4`
+   - `google/gemma-2-9b:free`
    - `z-ai/glm-4.5-air:free`
    - Any other OpenRouter-compatible model
+
+## Subtask Generation
+
+The AI will automatically generate subtasks for complex tasks when appropriate. Subtasks appear in the task details when expanded in the web interface. The system intelligently determines when a task should be broken down into smaller, actionable items.
