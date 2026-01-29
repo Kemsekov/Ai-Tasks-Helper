@@ -1,19 +1,8 @@
 import yaml
 from typing import Dict, Optional
 from openai import OpenAI
-from config import settings
 
-import os
-
-client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=settings.openrouter_token  # Get from https://openrouter.ai
-)
-
-# Get the model from environment variable, defaulting to qwen
-CURRENT_MODEL = os.getenv("DEFAULT_MODEL", "qwen/qwen3-coder:free")
-
-async def classify_task_with_ai(task_title: str, task_description: str) -> Optional[Dict]:
+async def classify_task_with_ai(task_title: str, task_description: str, provider_url: str, api_token: str, model_name: str) -> Optional[Dict]:
     """
     Classify a task using AI and return structured data in YAML format
     """
@@ -42,11 +31,17 @@ async def classify_task_with_ai(task_title: str, task_description: str) -> Optio
     Only respond with the YAML content, nothing else.
     """
 
+    # Create a client with the provided parameters
+    client = OpenAI(
+        base_url=provider_url,
+        api_key=api_token
+    )
+
     max_retries = 3
     for attempt in range(max_retries):
         try:
             response = client.chat.completions.create(
-                model=CURRENT_MODEL,  # Use the current model
+                model=model_name,  # Use the provided model
                 messages=[
                     {"role": "system", "content": "You are an expert task classifier. Respond only with valid YAML format as requested."},
                     {"role": "user", "content": prompt}

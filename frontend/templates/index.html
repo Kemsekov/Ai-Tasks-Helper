@@ -13,26 +13,17 @@
             <p>Add tasks and let AI automatically classify them</p>
         </header>
 
-        <section class="token-status-section">
-            <h2>AI Configuration</h2>
-            <div id="tokenStatus">
-                <p>Checking token status...</p>
+        <section class="ai-config-section">
+            <h2>AI Provider Configuration</h2>
+            <div id="configStatus">
+                <p>Checking configuration...</p>
             </div>
-            <div class="token-update-form">
-                <input type="password" id="newToken" placeholder="Enter new OpenRouter API token">
-                <button id="updateTokenBtn">Update Token</button>
-            </div>
-
-            <div class="model-selection-section">
-                <h3>Current Model</h3>
-                <div id="currentModel">
-                    <p>Loading model...</p>
-                </div>
-                <div class="model-update-form">
-                    <input type="text" id="newModel" placeholder="Enter model name (e.g., anthropic/claude-3-haiku:free)">
-                    <button id="updateModelBtn">Update Model</button>
-                    <button id="checkTokenModelBtn">Check Token & Model</button>
-                </div>
+            <div class="config-update-form">
+                <input type="text" id="providerUrl" placeholder="Provider URL (e.g., https://openrouter.ai/api/v1, https://api.openai.com/v1)">
+                <input type="password" id="apiToken" placeholder="API Token">
+                <input type="text" id="modelName" placeholder="Model name (e.g., openai/gpt-4, anthropic/claude-3-haiku:free)">
+                <button id="updateConfigBtn">Update Configuration</button>
+                <button id="checkConfigBtn">Validate Configuration</button>
             </div>
         </section>
 

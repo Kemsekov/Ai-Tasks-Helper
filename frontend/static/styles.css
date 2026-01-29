@@ -27,7 +27,7 @@ header {
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-.token-status-section {
+.ai-config-section {
     background: white;
     margin-bottom: 30px;
     padding: 25px;
@@ -35,45 +35,60 @@ header {
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
 }
 
-.token-status-section h2 {
+.ai-config-section h2 {
     color: #2c3e50;
     margin-bottom: 15px;
     padding-bottom: 10px;
     border-bottom: 2px solid #eee;
 }
 
-.token-status-container {
+.config-status-container {
     padding: 10px;
     margin-bottom: 15px;
     border-radius: 5px;
 }
 
-.token-status-valid {
+.config-status-valid {
     background-color: #d5f4e6;
     color: #27ae60;
     border: 1px solid #27ae60;
 }
 
-.token-status-invalid {
+.config-status-invalid {
     background-color: #fadbd8;
     color: #c0392b;
     border: 1px solid #c0392b;
 }
 
-.token-update-form {
+.config-update-form {
     display: flex;
+    flex-direction: column;
     gap: 10px;
     margin-top: 15px;
-    flex-wrap: wrap;
 }
 
-.token-update-form input {
-    flex: 1;
-    min-width: 200px;
+.config-update-form input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 16px;
 }
 
-.token-update-form button {
-    white-space: nowrap;
+.config-update-form button {
+    align-self: flex-start;
+    padding: 10px 20px;
+    margin-top: 5px;
+    border: none;
+    border-radius: 5px;
+    background-color: #3498db;
+    color: white;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.config-update-form button:hover {
+    background-color: #2980b9;
 }
 
 .model-selection-section {

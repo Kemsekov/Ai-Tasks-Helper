@@ -16,7 +16,20 @@ def handle_tasks():
     if request.method == 'POST':
         try:
             data = request.json
-            response = requests.post(f'{BACKEND_URL}/api/v1/tasks/', json=data)
+
+            # Get current configuration to use for AI processing
+            config_response = requests.get(f'{BACKEND_URL}/api/config')
+            config = config_response.json()
+
+            # Add the configuration parameters to the request
+            params = {
+                'provider_url': config.get('provider_url', 'https://openrouter.ai/api/v1'),
+                'api_token': os.getenv('OPENROUTER_TOKEN', ''),  # Use token from environment as fallback
+                'model_name': config.get('model', 'qwen/qwen3-coder:free')
+            }
+
+            # Make the request to the backend with parameters
+            response = requests.post(f'{BACKEND_URL}/api/v1/tasks/', json=data, params=params)
             return jsonify(response.json()), response.status_code
         except Exception as e:
             return jsonify({'error': str(e)}), 500
@@ -34,7 +47,7 @@ def get_user_tasks(user_id):
 @app.route('/api/health', methods=['GET'])
 def api_health():
     try:
-        response = requests.get(f'{BACKEND_URL}/api/health')
+        response = requests.get(f'{BACKEND_URL}/health')
         return jsonify(response.json()), response.status_code
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -53,24 +66,30 @@ def update_token():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/model', methods=['GET'])
-def get_model():
+@app.route('/api/config', methods=['GET'])
+def get_config():
     try:
-        response = requests.get(f'{BACKEND_URL}/api/model')
+        response = requests.get(f'{BACKEND_URL}/api/config')
         return jsonify(response.json()), response.status_code
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/update-model', methods=['POST'])
-def update_model():
+@app.route('/api/update-config', methods=['POST'])
+def update_config():
     try:
         data = request.json
-        model = data.get('token')  # Using 'token' field to be consistent with the backend request model
-        if not model:
-            return jsonify({'status': 'error', 'message': 'Model is required'}), 400
+        # Validate required fields
+        required_fields = ['provider_url', 'api_token', 'model_name']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'status': 'error', 'message': f'{field} is required'}), 400
 
         # Forward the request to the backend
-        response = requests.post(f'{BACKEND_URL}/api/update-model', json={'token': model})
+        response = requests.post(f'{BACKEND_URL}/api/update-config', json={
+            'provider_url': data['provider_url'],
+            'api_token': data['api_token'],
+            'model_name': data['model_name']
+        })
         return jsonify(response.json()), response.status_code
     except Exception as e:
         return jsonify({'error': str(e)}), 500

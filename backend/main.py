@@ -1,8 +1,8 @@
+import os
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from api.routers import tasks
-from openai import OpenAI
-import os
+from pydantic import BaseModel
 
 app = FastAPI(title="AI Task Manager", version="1.0.0")
 
@@ -22,97 +22,86 @@ app.include_router(tasks.router, prefix="/api/v1", tags=["tasks"])
 def read_root():
     return {"message": "AI Task Manager API"}
 
+# Define the request models first
+class TokenUpdateRequest(BaseModel):
+    token: str
+
+class ConfigUpdateRequest(BaseModel):
+    provider_url: str
+    api_token: str
+    model_name: str
+
+# Global variables for current provider settings
+current_provider_url = "https://openrouter.ai/api/v1"  # Default provider URL
+current_api_token = os.getenv("OPENROUTER_TOKEN", "")  # Default to environment variable
+current_model = os.getenv("DEFAULT_MODEL", "qwen/qwen3-coder:free")
+
 @app.get("/health")
 def health_check():
     return {"status": "healthy"}
 
-# Global client and model for API health checks
-current_model = os.getenv("DEFAULT_MODEL", "qwen/qwen3-coder:free")
-client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=os.getenv("OPENROUTER_TOKEN")  # Get from https://openrouter.ai
-)
+@app.get("/api/config")
+def get_current_config():
+    return {
+        "provider_url": current_provider_url,
+        "model": current_model,
+        "has_valid_token": bool(current_api_token),
+        "status": "success"
+    }
 
 @app.get("/api/health")
-async def api_health():
-    """Check if the OpenRouter API token is valid with the current model"""
+def api_health_check(
+    provider_url: str = Query(None, description="Provider URL to test"),
+    api_token: str = Query(None, description="API token to test"),
+    model_name: str = Query(None, description="Model name to test")
+):
+    """Check if the AI provider API token is valid with specified model"""
+    # Use provided parameters or fall back to current configuration
+    test_url = provider_url or current_provider_url
+    test_token = api_token or current_api_token
+    test_model = model_name or current_model
+
     try:
-        # Test the API with a simple request using the current model
-        response = client.chat.completions.create(
-            model=current_model,  # Use the current model instead of hardcoded one
+        from openai import OpenAI
+        # Create a temporary client with the provided parameters
+        temp_client = OpenAI(
+            base_url=test_url,
+            api_key=test_token
+        )
+
+        # Test the API with a simple request using the specified model
+        response = temp_client.chat.completions.create(
+            model=test_model,
             messages=[{"role": "user", "content": "Hello, are you there?"}],
             max_tokens=5
         )
         return {
             "status": "healthy",
             "api_access": True,
-            "message": f"OpenRouter API is accessible and token is valid with model {current_model}",
-            "model": current_model
+            "message": f"AI provider API is accessible and token is valid with model {test_model}",
+            "model": test_model
         }
     except Exception as e:
         return {
             "status": "unhealthy",
             "api_access": False,
-            "message": f"OpenRouter API error: {str(e)}",
-            "model": current_model
+            "message": f"AI provider API error: {str(e)}",
+            "model": test_model
         }
 
-from fastapi import FastAPI, Query
-from pydantic import BaseModel
-
-class TokenUpdateRequest(BaseModel):
-    token: str
-
-@app.post("/api/update-token")
-async def update_token(request: TokenUpdateRequest):
-    """Update the OpenRouter API token"""
-    try:
-        # Update the client with the new token
-        global client
-        client = OpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=request.token
-        )
-
-        # Test the new token
-        response = client.chat.completions.create(
-            model="qwen/qwen3-coder:free",
-            messages=[{"role": "user", "content": "Hello, are you there?"}],
-            max_tokens=5
-        )
-
-        # Update environment variable (this won't persist after container restart)
-        os.environ['OPENROUTER_TOKEN'] = request.token
-
-        return {
-            "status": "success",
-            "message": "Token updated successfully and validated"
-        }
-    except Exception as e:
-        return {
-            "status": "error",
-            "message": f"Failed to validate new token: {str(e)}"
-        }
-
-@app.get("/api/model")
-async def get_current_model():
-    """Get the current model being used"""
-    return {
-        "model": current_model,
-        "status": "success"
-    }
-
-@app.post("/api/update-model")
-async def update_model(request: TokenUpdateRequest):
-    """Update the model being used"""
-    global current_model
-    current_model = request.token  # Store the new model name
-
-    # Update environment variable (this won't persist after container restart)
-    os.environ['DEFAULT_MODEL'] = request.token
-
+@app.post("/api/update-config")
+def update_current_config(request: ConfigUpdateRequest):
+    global current_provider_url, current_api_token, current_model
+    current_provider_url = request.provider_url
+    current_api_token = request.api_token
+    current_model = request.model_name
     return {
         "status": "success",
-        "message": f"Model updated to {request.token}",
-        "model": request.token
+        "message": f"Configuration updated - Provider: {request.provider_url}, Model: {request.model_name}",
+        "config": {
+            "provider_url": request.provider_url,
+            "model": request.model_name,
+            "has_valid_token": True
+        }
     }
+

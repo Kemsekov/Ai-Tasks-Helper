@@ -17,8 +17,8 @@ class Settings(BaseSettings):
     backend_secret: str
     backend_debug: bool = False
 
-    # AI settings
-    openrouter_token: str
+    # AI settings (now optional since managed via API)
+    openrouter_token: Optional[str] = None
     default_model: str = "qwen/qwen3-coder:free"
 
     @property

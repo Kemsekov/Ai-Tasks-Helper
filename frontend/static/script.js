@@ -6,12 +6,21 @@ document.addEventListener('DOMContentLoaded', function() {
     const filterUserIdInput = document.getElementById('filterUserId');
     const loadTasksBtn = document.getElementById('loadTasksBtn');
     const tasksContainer = document.getElementById('tasksContainer');
-    const tokenStatusDiv = document.getElementById('tokenStatus');
-    const newTokenInput = document.getElementById('newToken');
-    const updateTokenBtn = document.getElementById('updateTokenBtn');
-    const currentModelDiv = document.getElementById('currentModel');
-    const newModelInput = document.getElementById('newModel');
-    const updateModelBtn = document.getElementById('updateModelBtn');
+    const configStatusDiv = document.getElementById('configStatus');
+    const providerUrlInput = document.getElementById('providerUrl');
+    const apiTokenInput = document.getElementById('apiToken');
+    const modelNameInput = document.getElementById('modelName');
+    const updateConfigBtn = document.getElementById('updateConfigBtn');
+    const checkConfigBtn = document.getElementById('checkConfigBtn');
+
+    // Define missing elements that are referenced later in the code
+    const tokenStatusDiv = document.getElementById('tokenStatus');  // This element doesn't exist in current HTML
+    const newTokenInput = document.getElementById('newToken');      // This element doesn't exist in current HTML
+    const updateTokenBtn = document.getElementById('updateTokenBtn'); // This element doesn't exist in current HTML
+    const currentModelDiv = document.getElementById('currentModel'); // This element doesn't exist in current HTML
+    const newModelInput = document.getElementById('newModel');      // This element doesn't exist in current HTML
+    const updateModelBtn = document.getElementById('updateModelBtn'); // This element doesn't exist in current HTML
+    const checkTokenModelBtn = document.getElementById('checkTokenModelBtn'); // This element doesn't exist in current HTML
 
     // Add task form submission
     taskForm.addEventListener('submit', async function(e) {
@@ -223,167 +232,119 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.error, .success').forEach(el => el.remove());
     }
 
-    // Check token status on page load
-    async function checkTokenStatus() {
-        try {
-            const response = await fetch('/api/health');
-            const status = await response.json();
+    // The old token/model functions have been replaced with the new config functions
+    // All functionality is now handled through the config section
 
-            if (status.api_access) {
-                tokenStatusDiv.innerHTML = `
-                    <div class="token-status-container token-status-valid">
-                        <strong>Status:</strong> Valid<br>
-                        <strong>Message:</strong> ${status.message}
+    // Check configuration status on page load
+    async function checkConfigStatus() {
+        try {
+            const response = await fetch('/api/config');
+            const config = await response.json();
+
+            if (config.status === 'success') {
+                configStatusDiv.innerHTML = `
+                    <div class="config-status-container config-status-valid">
+                        <strong>Provider URL:</strong> ${config.provider_url}<br>
+                        <strong>Current Model:</strong> ${config.model}<br>
+                        <strong>Token Status:</strong> ${config.has_valid_token ? 'Valid' : 'Invalid/Not Set'}
                     </div>
                 `;
             } else {
-                tokenStatusDiv.innerHTML = `
-                    <div class="token-status-container token-status-invalid">
-                        <strong>Status:</strong> Invalid<br>
-                        <strong>Error:</strong> ${status.message}
+                configStatusDiv.innerHTML = `
+                    <div class="config-status-container config-status-invalid">
+                        <strong>Error:</strong> Could not retrieve configuration
                     </div>
                 `;
             }
         } catch (error) {
-            tokenStatusDiv.innerHTML = `
-                <div class="token-status-container token-status-invalid">
-                    <strong>Status:</strong> Error checking token<br>
-                    <strong>Error:</strong> Could not connect to API
+            configStatusDiv.innerHTML = `
+                <div class="config-status-container config-status-invalid">
+                    <strong>Error:</strong> Could not connect to API (${error.message})
                 </div>
             `;
         }
     }
 
-    // Update token button click handler
-    updateTokenBtn.addEventListener('click', async function() {
-        const newToken = newTokenInput.value.trim();
-        if (!newToken) {
-            showError('Please enter a valid API token');
+    // Update configuration button click handler
+    updateConfigBtn.addEventListener('click', async function() {
+        const providerUrl = providerUrlInput.value.trim();
+        const apiToken = apiTokenInput.value.trim();
+        const modelName = modelNameInput.value.trim();
+
+        if (!providerUrl || !apiToken || !modelName) {
+            showError('Provider URL, API token, and model name are all required');
             return;
         }
 
         try {
             showLoading(true);
-            const response = await fetch('/api/update-token', {
+            const response = await fetch('/api/update-config', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ token: newToken })
+                body: JSON.stringify({
+                    provider_url: providerUrl,
+                    api_token: apiToken,
+                    model_name: modelName
+                })
             });
 
             const result = await response.json();
 
             if (result.status === 'success') {
                 showSuccess(result.message);
-                // Refresh token status after successful update
-                setTimeout(checkTokenStatus, 1000);
-                newTokenInput.value = ''; // Clear the input
+                // Refresh config status after successful update
+                setTimeout(checkConfigStatus, 1000);
+                // Clear the inputs
+                providerUrlInput.value = '';
+                apiTokenInput.value = '';
+                modelNameInput.value = '';
             } else {
-                showError(result.message);
+                showError(result.message || 'Failed to update configuration');
             }
         } catch (error) {
-            showError(`Error updating token: ${error.message}`);
+            showError(`Error updating configuration: ${error.message}`);
         } finally {
             showLoading(false);
         }
     });
 
-    // Check model status on page load
-    async function checkCurrentModel() {
-        try {
-            const response = await fetch('/api/model');
-            const result = await response.json();
+    // Check configuration button click handler
+    checkConfigBtn.addEventListener('click', async function() {
+        const providerUrl = providerUrlInput.value.trim();
+        const apiToken = apiTokenInput.value.trim();
+        const modelName = modelNameInput.value.trim();
 
-            if (result.status === 'success') {
-                currentModelDiv.innerHTML = `
-                    <div class="token-status-container token-status-valid">
-                        <strong>Current Model:</strong> ${result.model}
-                    </div>
-                `;
-            } else {
-                currentModelDiv.innerHTML = `
-                    <div class="token-status-container token-status-invalid">
-                        <strong>Error:</strong> Could not retrieve model
-                    </div>
-                `;
-            }
-        } catch (error) {
-            currentModelDiv.innerHTML = `
-                <div class="token-status-container token-status-invalid">
-                    <strong>Error:</strong> Could not connect to API
-                </div>
-            `;
-        }
-    }
-
-    // Update model button click handler
-    updateModelBtn.addEventListener('click', async function() {
-        const newModel = newModelInput.value.trim();
-        if (!newModel) {
-            showError('Please enter a valid model name');
+        if (!providerUrl || !apiToken || !modelName) {
+            showError('Please enter provider URL, API token, and model name to validate');
             return;
         }
 
         try {
             showLoading(true);
-            const response = await fetch('/api/update-model', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ token: newModel })  // Using token field to match backend expectation
+            // Use the backend's health check endpoint to validate the configuration
+            const params = new URLSearchParams({
+                provider_url: providerUrl,
+                api_token: apiToken,
+                model_name: modelName
             });
 
+            const response = await fetch(`/api/health?${params}`);
             const result = await response.json();
 
-            if (result.status === 'success') {
-                showSuccess(result.message);
-                // Refresh model status after successful update
-                setTimeout(checkCurrentModel, 1000);
-                newModelInput.value = ''; // Clear the input
+            if (result.status === 'healthy') {
+                showSuccess(`Configuration is valid! Provider: ${result.model || modelName}`);
             } else {
-                showError(result.message);
+                showError(`Configuration error: ${result.message}`);
             }
         } catch (error) {
-            showError(`Error updating model: ${error.message}`);
+            showError(`Error validating configuration: ${error.message}`);
         } finally {
             showLoading(false);
         }
     });
 
-    // Check token and model button click handler
-    const checkTokenModelBtn = document.getElementById('checkTokenModelBtn');
-    checkTokenModelBtn.addEventListener('click', async function() {
-        try {
-            showLoading(true);
-            // First get the current model
-            const modelResponse = await fetch('/api/model');
-            const modelResult = await modelResponse.json();
-
-            if (modelResult.status === 'success') {
-                // Then check the token health with the current model
-                const healthResponse = await fetch('/api/health');
-                const healthResult = await healthResponse.json();
-
-                if (healthResult.status === 'healthy') {
-                    showSuccess(`Token and model (${modelResult.model}) are both working properly!`);
-                } else {
-                    showError(`Token issue detected: ${healthResult.message}`);
-                }
-            } else {
-                showError('Could not retrieve current model information');
-            }
-        } catch (error) {
-            showError(`Error checking token and model: ${error.message}`);
-        } finally {
-            showLoading(false);
-        }
-    });
-
-    // Initialize token status check
-    checkTokenStatus();
-
-    // Initialize model status check
-    checkCurrentModel();
+    // Initialize configuration status check
+    checkConfigStatus();
 });

@@ -14,11 +14,13 @@ apt-get update && apt-get install -y postgresql-client
 
 # Wait for PostgreSQL to be ready
 echo "Waiting for PostgreSQL to be ready..."
-while ! pg_isready -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER
+until pg_isready -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER
 do
     sleep 1
 done
 echo "PostgreSQL is ready!"
+# Add a small delay to ensure PostgreSQL is fully ready to accept connections
+sleep 2
 
 # Run database migrations (create tables)
 python -c "

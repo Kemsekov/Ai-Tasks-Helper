@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List
 from models.database import get_session_local
 from models.task import Task, PriorityEnum, CategoryEnum
 from schemas.task import TaskCreate, TaskUpdate, TaskResponse
-from utils.ai_classifier import classify_task_with_ai, client
+from utils.ai_classifier import classify_task_with_ai
 from sqlalchemy.exc import IntegrityError
 import os
 import importlib
@@ -12,25 +12,38 @@ import importlib
 router = APIRouter()
 
 @router.get("/api/health")
-async def api_health():
-    """Check if the OpenRouter API token is valid"""
+async def api_health(
+    provider_url: str = Query(..., description="AI provider URL"),
+    api_token: str = Query(..., description="API token for the provider"),
+    model_name: str = Query("qwen/qwen3-coder:free", description="Model name to test")
+):
+    """Check if the AI provider API token is valid with specified model"""
     try:
-        # Test the API with a simple request
-        response = client.chat.completions.create(
-            model="qwen/qwen3-coder:free",
+        from openai import OpenAI
+        # Create a temporary client with the provided parameters
+        temp_client = OpenAI(
+            base_url=provider_url,
+            api_key=api_token
+        )
+
+        # Test the API with a simple request using the specified model
+        response = temp_client.chat.completions.create(
+            model=model_name,
             messages=[{"role": "user", "content": "Hello, are you there?"}],
             max_tokens=5
         )
         return {
             "status": "healthy",
             "api_access": True,
-            "message": "OpenRouter API is accessible and token is valid"
+            "message": f"AI provider API is accessible and token is valid with model {model_name}",
+            "model": model_name
         }
     except Exception as e:
         return {
             "status": "unhealthy",
             "api_access": False,
-            "message": f"OpenRouter API error: {str(e)}"
+            "message": f"AI provider API error: {str(e)}",
+            "model": model_name
         }
 
 def get_db():
@@ -73,9 +86,21 @@ async def update_token(token: str):
         }
 
 @router.post("/tasks/")
-async def create_task(task: TaskCreate, db: Session = Depends(get_db)):
-    # Use AI to classify the task
-    classification_result = await classify_task_with_ai(task.title, task.description or "")
+async def create_task(
+    task: TaskCreate,
+    provider_url: str = Query(..., description="AI provider URL"),
+    api_token: str = Query(..., description="API token for the provider"),
+    model_name: str = Query("qwen/qwen3-coder:free", description="Model name to use for classification"),
+    db: Session = Depends(get_db)
+):
+    # Use AI to classify the task with the provided parameters
+    classification_result = await classify_task_with_ai(
+        task.title,
+        task.description or "",
+        provider_url,
+        api_token,
+        model_name
+    )
 
     # Create a new task with AI-classified data
     db_task = Task(
