@@ -4,16 +4,19 @@ An intelligent task management system that uses AI to automatically analyze and 
 
 ## Features
 
-- Add tasks in natural language
-- AI-powered task classification (priority, category, estimated time)
-- AI-generated subtasks for complex tasks
-- Real-time AI token and model management
-- Dynamic model switching (supports Qwen, Claude, OpenAI, Google models, and other providers)
-- RESTful API for task management
-- User-specific task organization
-- PostgreSQL database storage
-- Web-based frontend with intuitive UI
-- Docker containerization for easy deployment
+- **Add tasks in natural language**
+- **AI-powered task classification** (priority, category, estimated time)
+- **AI-generated subtasks** for complex tasks
+- **Web-based AI configuration** (provider URL, API token, model name)
+- **Persistent configuration storage** in browser cookies
+- **Real-time AI token and model management**
+- **Dynamic model switching** (supports Qwen, Claude, OpenAI, Google models, and other providers)
+- **Configuration validation** to test provider connectivity
+- **RESTful API** for task management
+- **User-specific task organization**
+- **PostgreSQL database storage**
+- **Web-based frontend with intuitive UI**
+- **Docker containerization** for easy deployment
 
 ## Tech Stack
 
@@ -28,12 +31,13 @@ An intelligent task management system that uses AI to automatically analyze and 
 ## Setup
 
 1. Clone the repository
-2. Set up environment variables in `.env` file
-3. Build and run with Docker Compose:
+2. Build and run with Docker Compose:
 
 ```bash
 docker-compose up --build
 ```
+
+**Note**: AI provider settings (provider URL, API token, and model name) must be configured through the web UI after launching the application. See the Web Interface section below for details.
 
 ## Environment Variables
 
@@ -55,9 +59,9 @@ BACKEND_PORT=8001
 BACKEND_SECRET=super-secret
 BACKEND_DEBUG=True
 
-# AI settings
-OPENROUTER_TOKEN=your_openrouter_api_key_here
-DEFAULT_MODEL="qwen/qwen3-coder:free"
+# AI settings (these can be left as defaults - actual settings configured via web UI)
+OPENROUTER_TOKEN= # Leave empty, configure via web UI
+DEFAULT_MODEL="qwen/qwen3-coder:free" # This can be changed via web UI
 ```
 
 ## Services
@@ -92,24 +96,27 @@ The application consists of three main services:
 ## Web Interface
 
 Access the user-friendly web interface at `http://localhost:5000` to:
-- View and manage tasks with a clean UI
-- Update your AI provider API token in real-time
-- Switch between different AI models (Qwen, Claude, GPT, Gemini, etc.)
-- Validate provider credentials and model availability
-- Monitor token and model status
-- View AI-generated subtasks for complex tasks
-- Add, view, update, and delete tasks
+- **Configure AI Provider Settings**: Set your provider URL, API token, and model name through the dedicated configuration section
+- **Validate Configuration**: Test your provider credentials and model availability with the validation feature
+- **Persistent Configuration**: Settings are stored in browser cookies and persist across sessions
+- **View and manage tasks** with a clean UI
+- **Switch between different AI models** (Qwen, Claude, GPT, Gemini, etc.) without restarting
+- **Monitor token and model status**
+- **View AI-generated subtasks** for complex tasks
+- **Add, view, update, and delete tasks**
+
+**Important**: The AI provider settings (provider URL, API token, and model name) must be configured through the web UI. The application will not work properly until these are set via the configuration panel.
 
 ## Usage
 
 After starting the service, access the web interface at `http://localhost:5000` to manage your tasks.
 
 From the web interface, you can:
-1. Configure your AI provider settings (URL, token, model)
-2. Validate your configuration
-3. Add tasks in natural language
-4. View AI-generated subtasks when applicable
-5. View, update, and delete your tasks
+1. **Configure your AI provider settings** using the configuration panel (provider URL, token, model)
+2. **Validate your configuration** to ensure connectivity
+3. **Add tasks in natural language**
+4. **View AI-generated subtasks** when applicable
+5. **View, update, and delete your tasks**
 
 Alternatively, you can interact with the API directly or use the interactive documentation at `http://localhost:8001/docs`.
 
