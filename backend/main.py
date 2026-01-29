@@ -1,8 +1,13 @@
 import os
+import logging
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from api.routers import tasks
 from pydantic import BaseModel
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="AI Task Manager", version="1.0.0")
 
@@ -45,6 +50,7 @@ def get_current_config():
     return {
         "provider_url": current_provider_url,
         "model": current_model,
+        "api_token": current_api_token,  # Include the token in the response
         "has_valid_token": bool(current_api_token),
         "status": "success"
     }

@@ -36,7 +36,7 @@ class TaskResponse(TaskBase):
     priority: PriorityEnum
     category: CategoryEnum
     estimated_time_minutes: Optional[int] = None
-    subtasks: Optional[str] = None
+    subtasks: Optional[str] = None  # JSON string of subtasks
     created_at: datetime
     updated_at: datetime
     ai_processed: bool

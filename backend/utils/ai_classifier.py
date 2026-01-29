@@ -26,6 +26,7 @@ async def classify_task_with_ai(task_title: str, task_description: str, provider
     subtasks:
       - Research requirements
       - Draft initial proposal
+      - Review with stakeholders
     ```
 
     Only respond with the YAML content, nothing else.
@@ -48,6 +49,11 @@ async def classify_task_with_ai(task_title: str, task_description: str, provider
                 ],
                 temperature=0.3
             )
+
+            # Check if response is valid before accessing attributes
+            if not hasattr(response, 'choices') or not response.choices:
+                print(f"Invalid response structure on attempt {attempt + 1}: {type(response)}")
+                continue
 
             # Extract the response content
             content = response.choices[0].message.content.strip()

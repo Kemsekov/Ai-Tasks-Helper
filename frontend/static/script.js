@@ -133,9 +133,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="meta-item">
                     <small>AI Processed: ${task.ai_processed ? 'Yes' : 'No (using defaults)'}</small>
                 </div>
+                ${task.subtasks ? `
+                <div class="subtasks-section">
+                    <details>
+                        <summary><strong>Subtasks:</strong></summary>
+                        <ul class="subtasks-list">
+                            ${(JSON.parse(task.subtasks) || []).map(st => `<li>${st}</li>`).join('')}
+                        </ul>
+                    </details>
+                </div>
+                ` : ''}
                 <div class="meta-item">
                     <small>Added: ${new Date(task.created_at).toLocaleString()}</small>
                 </div>
+                <button class="edit-btn" data-task-id="${task.id}">Edit Task</button>
                 <button class="delete-btn" data-task-id="${task.id}">Delete Task</button>
             `;
             
@@ -149,6 +160,104 @@ document.addEventListener('DOMContentLoaded', function() {
                 await deleteTask(taskId, userId);
             });
         });
+
+        // Add event listeners to edit buttons
+        document.querySelectorAll('.edit-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const taskId = parseInt(this.getAttribute('data-task-id'));
+                openEditModal(taskId);
+            });
+        });
+    }
+
+    // Open edit modal for a task
+    async function openEditModal(taskId) {
+        try {
+            showLoading(true);
+
+            // Get the current task details from the API
+            const response = await fetch(`/api/tasks/${taskId}`);
+            const task = await response.json();
+
+            if (!response.ok) {
+                throw new Error(task.detail || 'Failed to fetch task details');
+            }
+
+            // Create and show edit modal
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <span class="close-modal">&times;</span>
+                    <h3>Edit Task</h3>
+                    <form id="editTaskForm">
+                        <input type="hidden" id="editTaskId" value="${taskId}">
+                        <div class="form-group">
+                            <label for="editTaskTitle">Title:</label>
+                            <input type="text" id="editTaskTitle" value="${task.title.replace(/"/g, '&quot;')}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editTaskDescription">Description:</label>
+                            <textarea id="editTaskDescription">${task.description ? task.description.replace(/"/g, '&quot;') : ''}</textarea>
+                        </div>
+                        <button type="submit">Update Task</button>
+                    </form>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            // Close button event
+            modal.querySelector('.close-modal').addEventListener('click', function() {
+                document.body.removeChild(modal);
+            });
+
+            // Form submission
+            modal.querySelector('#editTaskForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                const updatedTitle = document.getElementById('editTaskTitle').value;
+                const updatedDescription = document.getElementById('editTaskDescription').value;
+
+                try {
+                    const updateResponse = await fetch(`/api/tasks/${taskId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            title: updatedTitle,
+                            description: updatedDescription
+                        })
+                    });
+
+                    const updateResult = await updateResponse.json();
+
+                    if (updateResponse.ok) {
+                        showSuccess('Task updated successfully!');
+                        document.body.removeChild(modal);
+                        // Reload tasks to show updated information
+                        const userId = document.getElementById('filterUserId').value || document.getElementById('userId').value;
+                        await loadTasks(userId);
+                    } else {
+                        showError(updateResult.detail || 'Failed to update task');
+                    }
+                } catch (error) {
+                    showError(`Error updating task: ${error.message}`);
+                }
+            });
+
+            // Close modal when clicking outside of it
+            modal.addEventListener('click', function(event) {
+                if (event.target === modal) {
+                    document.body.removeChild(modal);
+                }
+            });
+        } catch (error) {
+            showError(`Error loading task for editing: ${error.message}`);
+        } finally {
+            showLoading(false);
+        }
     }
 
     // Delete a task

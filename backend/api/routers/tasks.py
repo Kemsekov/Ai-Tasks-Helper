@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List
@@ -8,6 +9,10 @@ from utils.ai_classifier import classify_task_with_ai
 from sqlalchemy.exc import IntegrityError
 import os
 import importlib
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -90,9 +95,12 @@ async def create_task(
     task: TaskCreate,
     provider_url: str = Query(..., description="AI provider URL"),
     api_token: str = Query(..., description="API token for the provider"),
-    model_name: str = Query("qwen/qwen3-coder:free", description="Model name to use for classification"),
+    model_name: str = Query(..., description="Model name to use for classification"),
     db: Session = Depends(get_db)
 ):
+    logger.info(f"Received request to create task: '{task.title}' for user '{task.user_id}'")
+    logger.info(f"Using AI provider: {provider_url}, model: {model_name}")
+
     # Use AI to classify the task with the provided parameters
     classification_result = await classify_task_with_ai(
         task.title,
@@ -101,6 +109,11 @@ async def create_task(
         api_token,
         model_name
     )
+
+    logger.info(f"AI classification result: priority={classification_result['priority']}, "
+                f"category={classification_result['category']}, "
+                f"estimated_time={classification_result['estimated_time_minutes']}, "
+                f"subtasks_count={len(classification_result['subtasks']) if classification_result['subtasks'] else 0}")
 
     # Create a new task with AI-classified data
     db_task = Task(
@@ -185,8 +198,11 @@ def read_user_tasks(user_id: str, skip: int = 0, limit: int = 100, db: Session =
 
 @router.put("/tasks/{task_id}")
 def update_task(task_id: int, task_update: TaskUpdate, db: Session = Depends(get_db)):
+    logger.info(f"Received request to update task ID: {task_id}")
+
     db_task = db.query(Task).filter(Task.id == task_id).first()
     if not db_task:
+        logger.warning(f"Task with ID {task_id} not found for update")
         raise HTTPException(status_code=404, detail="Task not found")
 
     # Update task fields if provided
@@ -196,6 +212,8 @@ def update_task(task_id: int, task_update: TaskUpdate, db: Session = Depends(get
 
     db.commit()
     db.refresh(db_task)
+
+    logger.info(f"Task ID {task_id} updated successfully")
 
     # Return updated task with ai_processed field
     response_data = {
