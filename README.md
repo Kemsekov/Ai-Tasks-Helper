@@ -70,8 +70,9 @@ The application consists of three main services:
 
 ### Backend API (available at http://localhost:8001/)
 - `GET /health` - Check if the backend is running
-- `GET /api/model` - Get the current AI model
-- `POST /api/update-model` - Update the AI model
+- `GET /api/config` - Get the current AI configuration (provider URL, model, token status)
+- `POST /api/update-config` - Update the AI configuration (provider URL, token, model)
+- `GET /api/health` - Check if the AI provider API token is valid with specified model
 - `POST /api/v1/tasks/` - Create a new task (AI will classify it)
 - `GET /api/v1/tasks/{task_id}` - Get a specific task
 - `GET /api/v1/users/{user_id}/tasks` - Get all tasks for a user
@@ -80,9 +81,10 @@ The application consists of three main services:
 
 ### Frontend API (available at http://localhost:5000/api/)
 - `GET /health` - Check backend health status
+- `GET /config` - Get current AI configuration
+- `POST /update-config` - Update AI configuration (provider URL, token, model)
 - `GET /model` - Get current AI model
 - `POST /update-model` - Update AI model
-- `POST /update-token` - Update OpenRouter API token
 - `POST /tasks/` - Create a new task
 - `GET /users/{user_id}/tasks` - Get all tasks for a user
 
