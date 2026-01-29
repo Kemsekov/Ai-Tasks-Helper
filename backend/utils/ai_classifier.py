@@ -1,6 +1,11 @@
+import logging
 import yaml
 from typing import Dict, Optional
 from openai import OpenAI
+import httpx
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 async def classify_task_with_ai(task_title: str, task_description: str, provider_url: str, api_token: str, model_name: str) -> Optional[Dict]:
     """
@@ -32,15 +37,39 @@ async def classify_task_with_ai(task_title: str, task_description: str, provider
     Only respond with the YAML content, nothing else.
     """
 
-    # Create a client with the provided parameters
+    # Log the parameters for debugging
+    logger.info(f"Attempting AI classification with provider: {provider_url}")
+    logger.info(f"Model: {model_name}")
+    logger.info(f"Token provided: {'Yes' if api_token else 'No'}")
+    logger.info(f"Token length: {len(api_token) if api_token else 0}")
+
+    # Create a client with the provided parameters and custom headers for OpenRouter
+    # OpenRouter sometimes requires additional headers for authentication
+    headers = {
+        "Authorization": f"Bearer {api_token}",
+        "Content-Type": "application/json"
+    }
+
+    # Add referer header for OpenRouter free tier access
+    if "openrouter.ai" in provider_url:
+        headers["HTTP-Referer"] = "http://localhost:8000"  # Local development
+        headers["X-Title"] = "AI Task Helper"  # App name for OpenRouter analytics
+
+    # Create custom httpx client with headers
+    http_client = httpx.Client(headers=headers)
+
     client = OpenAI(
         base_url=provider_url,
-        api_key=api_token
+        api_key=api_token,
+        http_client=http_client
     )
 
     max_retries = 3
     for attempt in range(max_retries):
         try:
+            logger.info(f"Making API call to {provider_url}/chat/completions, attempt {attempt + 1}")
+            logger.info(f"Using model: {model_name}")
+
             response = client.chat.completions.create(
                 model=model_name,  # Use the provided model
                 messages=[
@@ -50,13 +79,16 @@ async def classify_task_with_ai(task_title: str, task_description: str, provider
                 temperature=0.3
             )
 
+            logger.info(f"API call successful, response type: {type(response)}")
+
             # Check if response is valid before accessing attributes
             if not hasattr(response, 'choices') or not response.choices:
-                print(f"Invalid response structure on attempt {attempt + 1}: {type(response)}")
+                logger.error(f"Invalid response structure on attempt {attempt + 1}: {type(response)}")
                 continue
 
             # Extract the response content
             content = response.choices[0].message.content.strip()
+            logger.info(f"Response content preview: {content[:100]}...")
 
             # Remove markdown code block markers if present
             if content.startswith("```yaml") and content.endswith("```"):
@@ -69,6 +101,7 @@ async def classify_task_with_ai(task_title: str, task_description: str, provider
 
             # Validate the response structure
             if validate_classification(parsed_response):
+                logger.info("Classification successful, returning parsed response")
                 return {
                     "priority": parsed_response["priority"],
                     "category": parsed_response["category"],
@@ -77,22 +110,34 @@ async def classify_task_with_ai(task_title: str, task_description: str, provider
                     "used_fallback": False
                 }
             else:
+                logger.warning(f"Parsed response failed validation on attempt {attempt + 1}")
                 continue  # Retry if validation fails
 
         except Exception as e:
             error_msg = str(e)
-            print(f"Error in AI classification (attempt {attempt + 1}): {error_msg}")
+            logger.error(f"Error in AI classification (attempt {attempt + 1}): {error_msg}")
+            logger.exception("Full traceback:")  # This will log the full stack trace
 
             # Check if it's an authentication error
             if "401" in error_msg or "User not found" in error_msg or "Authentication" in error_msg:
-                print("Authentication error detected - returning default values immediately")
+                logger.error("Authentication error detected - returning default values immediately")
                 break  # Don't retry if it's an auth error
             elif "429" in error_msg or "rate" in error_msg.lower():
-                print("Rate limit error detected - continuing to retry")
+                logger.warning("Rate limit error detected - continuing to retry")
                 continue  # Continue retrying for rate limits
+            elif "Connection error" in error_msg or "connection" in error_msg.lower():
+                logger.error(f"Connection error on attempt {attempt + 1}, will retry: {error_msg}")
+                if attempt == max_retries - 1:
+                    logger.error("All connection retries exhausted - returning default values")
+                    return {
+                        "priority": "Medium",
+                        "category": "Other",
+                        "estimated_time_minutes": 30,
+                        "subtasks": None
+                    }
             elif attempt == max_retries - 1:
                 # Return default values if all retries fail
-                print("All retries exhausted - returning default values")
+                logger.error("All retries exhausted - returning default values")
                 return {
                     "priority": "Medium",
                     "category": "Other",
@@ -101,6 +146,7 @@ async def classify_task_with_ai(task_title: str, task_description: str, provider
                 }
 
     # If all attempts fail or auth error occurs, return default values
+    logger.warning("Returning fallback values after all attempts")
     return {
         "priority": "Medium",
         "category": "Other",

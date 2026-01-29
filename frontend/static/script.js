@@ -13,6 +13,46 @@ document.addEventListener('DOMContentLoaded', function() {
     const updateConfigBtn = document.getElementById('updateConfigBtn');
     const checkConfigBtn = document.getElementById('checkConfigBtn');
 
+    // Function to get cookie value
+    function getCookie(name) {
+        let cookieArr = document.cookie.split(";");
+        for(let i = 0; i < cookieArr.length; i++) {
+            let cookiePair = cookieArr[i].split("=");
+            if (name == cookiePair[0].trim()) {
+                return decodeURIComponent(cookiePair[1]);
+            }
+        }
+        return null;
+    }
+
+    // Function to set cookie value
+    function setCookie(name, value, days = 30) {
+        let expires = "";
+        if (days) {
+            let date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            expires = "; expires=" + date.toUTCString();
+        }
+        document.cookie = name + "=" + encodeURIComponent(value) + expires + "; path=/";
+    }
+
+    // Load configuration from cookies on page load
+    window.addEventListener('load', function() {
+        const savedProviderUrl = getCookie('provider_url');
+        const savedApiToken = getCookie('api_token');
+        const savedModelName = getCookie('model_name');
+
+        if (savedProviderUrl) {
+            providerUrlInput.value = savedProviderUrl;
+        }
+        if (savedApiToken) {
+            apiTokenInput.value = savedApiToken;
+        }
+        if (savedModelName) {
+            modelNameInput.value = savedModelName;
+        }
+    });
+
     // Define missing elements that are referenced later in the code
     const tokenStatusDiv = document.getElementById('tokenStatus');  // This element doesn't exist in current HTML
     const newTokenInput = document.getElementById('newToken');      // This element doesn't exist in current HTML
@@ -138,7 +178,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <details>
                         <summary><strong>Subtasks:</strong></summary>
                         <ul class="subtasks-list">
-                            ${(JSON.parse(task.subtasks) || []).map(st => `<li>${st}</li>`).join('')}
+                            ${parseSubtasks(task.subtasks).map(st => `<li>${st}</li>`).join('')}
                         </ul>
                     </details>
                 </div>
@@ -341,6 +381,63 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.error, .success').forEach(el => el.remove());
     }
 
+    // Function to parse subtasks that can handle both JSON strings and Python list representations
+    function parseSubtasks(subtasks) {
+        if (!subtasks) {
+            return [];
+        }
+
+        try {
+            // First, try to parse as JSON
+            return JSON.parse(subtasks);
+        } catch (e) {
+            // If JSON parsing fails, try to handle as Python list representation
+            // Remove brackets and split by commas outside of quotes
+            if (typeof subtasks === 'string') {
+                // Handle Python-style list representation: "['item1', 'item2', 'item3']"
+                const trimmed = subtasks.trim();
+                if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+                    // Extract content between brackets
+                    const content = trimmed.substring(1, trimmed.length - 1);
+
+                    // Split by comma, but be careful with nested quotes
+                    const items = [];
+                    let currentItem = '';
+                    let insideQuotes = false;
+                    let quoteChar = null;
+
+                    for (let i = 0; i < content.length; i++) {
+                        const char = content[i];
+
+                        if ((char === '"' || char === "'") && (i === 0 || content[i-1] !== '\\')) {
+                            if (!insideQuotes) {
+                                insideQuotes = true;
+                                quoteChar = char;
+                            } else if (char === quoteChar) {
+                                insideQuotes = false;
+                                quoteChar = null;
+                            }
+                            currentItem += char;
+                        } else if (char === ',' && !insideQuotes) {
+                            items.push(currentItem.trim().replace(/^['"]|['"]$/g, ''));
+                            currentItem = '';
+                        } else {
+                            currentItem += char;
+                        }
+                    }
+
+                    if (currentItem.trim()) {
+                        items.push(currentItem.trim().replace(/^['"]|['"]$/g, ''));
+                    }
+
+                    return items.filter(item => item.length > 0);
+                }
+            }
+            // If all parsing fails, return empty array
+            return [];
+        }
+    }
+
     // The old token/model functions have been replaced with the new config functions
     // All functionality is now handled through the config section
 
@@ -403,12 +500,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (result.status === 'success') {
                 showSuccess(result.message);
+                // Store the configuration in cookies
+                setCookie('provider_url', providerUrl);
+                setCookie('api_token', apiToken);
+                setCookie('model_name', modelName);
+
                 // Refresh config status after successful update
                 setTimeout(checkConfigStatus, 1000);
-                // Clear the inputs
-                providerUrlInput.value = '';
-                apiTokenInput.value = '';
-                modelNameInput.value = '';
+                // Don't clear the inputs - keep them filled with the saved values
             } else {
                 showError(result.message || 'Failed to update configuration');
             }
@@ -444,6 +543,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (result.status === 'healthy') {
                 showSuccess(`Configuration is valid! Provider: ${result.model || modelName}`);
+                // Store the configuration in cookies after successful validation
+                setCookie('provider_url', providerUrl);
+                setCookie('api_token', apiToken);
+                setCookie('model_name', modelName);
             } else {
                 showError(`Configuration error: ${result.message}`);
             }

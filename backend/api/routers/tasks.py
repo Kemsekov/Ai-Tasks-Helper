@@ -25,10 +25,25 @@ async def api_health(
     """Check if the AI provider API token is valid with specified model"""
     try:
         from openai import OpenAI
+        import httpx
+
+        # Create headers for OpenRouter
+        headers = {
+            "Authorization": f"Bearer {api_token}",
+            "Content-Type": "application/json"
+        }
+
+        # Add referer header for OpenRouter free tier access
+        if "openrouter.ai" in provider_url:
+            headers["HTTP-Referer"] = "http://localhost:8000"  # Local development
+            headers["X-Title"] = "AI Task Helper"  # App name for OpenRouter analytics
+
         # Create a temporary client with the provided parameters
+        http_client = httpx.Client(headers=headers)
         temp_client = OpenAI(
             base_url=provider_url,
-            api_key=api_token
+            api_key=api_token,
+            http_client=http_client
         )
 
         # Test the API with a simple request using the specified model
@@ -64,10 +79,24 @@ async def update_token(token: str):
     try:
         # Update the client with the new token
         from openai import OpenAI
-        global client
+        import httpx
+
+        # Create headers for OpenRouter
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+
+        # Add referer header for OpenRouter free tier access
+        headers["HTTP-Referer"] = "http://localhost:8000"  # Local development
+        headers["X-Title"] = "AI Task Helper"  # App name for OpenRouter analytics
+
+        # Create a temporary client with the provided parameters
+        http_client = httpx.Client(headers=headers)
         client = OpenAI(
             base_url="https://openrouter.ai/api/v1",
-            api_key=token
+            api_key=token,
+            http_client=http_client
         )
 
         # Test the new token
